@@ -17,34 +17,40 @@ var _ store.Storer = &StorerMock{}
 
 // StorerMock is a mock implementation of store.Storer.
 //
-// 	func TestSomethingThatUsesStorer(t *testing.T) {
+//	func TestSomethingThatUsesStorer(t *testing.T) {
 //
-// 		// make and configure a mocked store.Storer
-// 		mockedStorer := &StorerMock{
-// 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-// 				panic("mock out the Checker method")
-// 			},
-// 			DeleteValueFunc: func(ctx context.Context, key string) error {
-// 				panic("mock out the DeleteValue method")
-// 			},
-// 			GetKeyValuePairsFunc: func(ctx context.Context, matchPattern string, count int64, cursor uint64) (map[string]string, uint64, error) {
-// 				panic("mock out the GetKeyValuePairs method")
-// 			},
-// 			GetTotalKeysFunc: func(ctx context.Context) (int64, error) {
-// 				panic("mock out the GetTotalKeys method")
-// 			},
-// 			GetValueFunc: func(ctx context.Context, key string) (string, error) {
-// 				panic("mock out the GetValue method")
-// 			},
-// 			SetValueFunc: func(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-// 				panic("mock out the SetValue method")
-// 			},
-// 		}
+//		// make and configure a mocked store.Storer
+//		mockedStorer := &StorerMock{
+//			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+//				panic("mock out the Checker method")
+//			},
+//			DeleteValueFunc: func(ctx context.Context, key string) error {
+//				panic("mock out the DeleteValue method")
+//			},
+//			GetKeyValuePairsFunc: func(ctx context.Context, matchPattern string, count int64, cursor uint64) (map[string]string, uint64, error) {
+//				panic("mock out the GetKeyValuePairs method")
+//			},
+//			GetSetMemberCountFunc: func(ctx context.Context, setKey string) (int64, error) {
+//				panic("mock out the GetSetMemberCount method")
+//			},
+//			GetSetMemberValuesFunc: func(ctx context.Context, setKey string, matchPattern string, valuePrefix string, count int64, cursor uint64) (map[string]string, uint64, error) {
+//				panic("mock out the GetSetMemberValues method")
+//			},
+//			GetTotalKeysFunc: func(ctx context.Context) (int64, error) {
+//				panic("mock out the GetTotalKeys method")
+//			},
+//			GetValueFunc: func(ctx context.Context, key string) (string, error) {
+//				panic("mock out the GetValue method")
+//			},
+//			SetValueFunc: func(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+//				panic("mock out the SetValue method")
+//			},
+//		}
 //
-// 		// use mockedStorer in code that requires store.Storer
-// 		// and then make assertions.
+//		// use mockedStorer in code that requires store.Storer
+//		// and then make assertions.
 //
-// 	}
+//	}
 type StorerMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
@@ -54,6 +60,12 @@ type StorerMock struct {
 
 	// GetKeyValuePairsFunc mocks the GetKeyValuePairs method.
 	GetKeyValuePairsFunc func(ctx context.Context, matchPattern string, count int64, cursor uint64) (map[string]string, uint64, error)
+
+	// GetSetMemberCountFunc mocks the GetSetMemberCount method.
+	GetSetMemberCountFunc func(ctx context.Context, setKey string) (int64, error)
+
+	// GetSetMemberValuesFunc mocks the GetSetMemberValues method.
+	GetSetMemberValuesFunc func(ctx context.Context, setKey string, matchPattern string, valuePrefix string, count int64, cursor uint64) (map[string]string, uint64, error)
 
 	// GetTotalKeysFunc mocks the GetTotalKeys method.
 	GetTotalKeysFunc func(ctx context.Context) (int64, error)
@@ -91,6 +103,28 @@ type StorerMock struct {
 			// Cursor is the cursor argument value.
 			Cursor uint64
 		}
+		// GetSetMemberCount holds details about calls to the GetSetMemberCount method.
+		GetSetMemberCount []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SetKey is the setKey argument value.
+			SetKey string
+		}
+		// GetSetMemberValues holds details about calls to the GetSetMemberValues method.
+		GetSetMemberValues []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SetKey is the setKey argument value.
+			SetKey string
+			// MatchPattern is the matchPattern argument value.
+			MatchPattern string
+			// ValuePrefix is the valuePrefix argument value.
+			ValuePrefix string
+			// Count is the count argument value.
+			Count int64
+			// Cursor is the cursor argument value.
+			Cursor uint64
+		}
 		// GetTotalKeys holds details about calls to the GetTotalKeys method.
 		GetTotalKeys []struct {
 			// Ctx is the ctx argument value.
@@ -115,12 +149,14 @@ type StorerMock struct {
 			Expiration time.Duration
 		}
 	}
-	lockChecker          sync.RWMutex
-	lockDeleteValue      sync.RWMutex
-	lockGetKeyValuePairs sync.RWMutex
-	lockGetTotalKeys     sync.RWMutex
-	lockGetValue         sync.RWMutex
-	lockSetValue         sync.RWMutex
+	lockChecker            sync.RWMutex
+	lockDeleteValue        sync.RWMutex
+	lockGetKeyValuePairs   sync.RWMutex
+	lockGetSetMemberCount  sync.RWMutex
+	lockGetSetMemberValues sync.RWMutex
+	lockGetTotalKeys       sync.RWMutex
+	lockGetValue           sync.RWMutex
+	lockSetValue           sync.RWMutex
 }
 
 // Checker calls CheckerFunc.
@@ -143,7 +179,8 @@ func (mock *StorerMock) Checker(ctx context.Context, state *healthcheck.CheckSta
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedStorer.CheckerCalls())
+//
+//	len(mockedStorer.CheckerCalls())
 func (mock *StorerMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
@@ -178,7 +215,8 @@ func (mock *StorerMock) DeleteValue(ctx context.Context, key string) error {
 
 // DeleteValueCalls gets all the calls that were made to DeleteValue.
 // Check the length with:
-//     len(mockedStorer.DeleteValueCalls())
+//
+//	len(mockedStorer.DeleteValueCalls())
 func (mock *StorerMock) DeleteValueCalls() []struct {
 	Ctx context.Context
 	Key string
@@ -217,7 +255,8 @@ func (mock *StorerMock) GetKeyValuePairs(ctx context.Context, matchPattern strin
 
 // GetKeyValuePairsCalls gets all the calls that were made to GetKeyValuePairs.
 // Check the length with:
-//     len(mockedStorer.GetKeyValuePairsCalls())
+//
+//	len(mockedStorer.GetKeyValuePairsCalls())
 func (mock *StorerMock) GetKeyValuePairsCalls() []struct {
 	Ctx          context.Context
 	MatchPattern string
@@ -233,6 +272,94 @@ func (mock *StorerMock) GetKeyValuePairsCalls() []struct {
 	mock.lockGetKeyValuePairs.RLock()
 	calls = mock.calls.GetKeyValuePairs
 	mock.lockGetKeyValuePairs.RUnlock()
+	return calls
+}
+
+// GetSetMemberCount calls GetSetMemberCountFunc.
+func (mock *StorerMock) GetSetMemberCount(ctx context.Context, setKey string) (int64, error) {
+	if mock.GetSetMemberCountFunc == nil {
+		panic("StorerMock.GetSetMemberCountFunc: method is nil but Storer.GetSetMemberCount was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		SetKey string
+	}{
+		Ctx:    ctx,
+		SetKey: setKey,
+	}
+	mock.lockGetSetMemberCount.Lock()
+	mock.calls.GetSetMemberCount = append(mock.calls.GetSetMemberCount, callInfo)
+	mock.lockGetSetMemberCount.Unlock()
+	return mock.GetSetMemberCountFunc(ctx, setKey)
+}
+
+// GetSetMemberCountCalls gets all the calls that were made to GetSetMemberCount.
+// Check the length with:
+//
+//	len(mockedStorer.GetSetMemberCountCalls())
+func (mock *StorerMock) GetSetMemberCountCalls() []struct {
+	Ctx    context.Context
+	SetKey string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		SetKey string
+	}
+	mock.lockGetSetMemberCount.RLock()
+	calls = mock.calls.GetSetMemberCount
+	mock.lockGetSetMemberCount.RUnlock()
+	return calls
+}
+
+// GetSetMemberValues calls GetSetMemberValuesFunc.
+func (mock *StorerMock) GetSetMemberValues(ctx context.Context, setKey string, matchPattern string, valuePrefix string, count int64, cursor uint64) (map[string]string, uint64, error) {
+	if mock.GetSetMemberValuesFunc == nil {
+		panic("StorerMock.GetSetMemberValuesFunc: method is nil but Storer.GetSetMemberValues was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		SetKey       string
+		MatchPattern string
+		ValuePrefix  string
+		Count        int64
+		Cursor       uint64
+	}{
+		Ctx:          ctx,
+		SetKey:       setKey,
+		MatchPattern: matchPattern,
+		ValuePrefix:  valuePrefix,
+		Count:        count,
+		Cursor:       cursor,
+	}
+	mock.lockGetSetMemberValues.Lock()
+	mock.calls.GetSetMemberValues = append(mock.calls.GetSetMemberValues, callInfo)
+	mock.lockGetSetMemberValues.Unlock()
+	return mock.GetSetMemberValuesFunc(ctx, setKey, matchPattern, valuePrefix, count, cursor)
+}
+
+// GetSetMemberValuesCalls gets all the calls that were made to GetSetMemberValues.
+// Check the length with:
+//
+//	len(mockedStorer.GetSetMemberValuesCalls())
+func (mock *StorerMock) GetSetMemberValuesCalls() []struct {
+	Ctx          context.Context
+	SetKey       string
+	MatchPattern string
+	ValuePrefix  string
+	Count        int64
+	Cursor       uint64
+} {
+	var calls []struct {
+		Ctx          context.Context
+		SetKey       string
+		MatchPattern string
+		ValuePrefix  string
+		Count        int64
+		Cursor       uint64
+	}
+	mock.lockGetSetMemberValues.RLock()
+	calls = mock.calls.GetSetMemberValues
+	mock.lockGetSetMemberValues.RUnlock()
 	return calls
 }
 
@@ -254,7 +381,8 @@ func (mock *StorerMock) GetTotalKeys(ctx context.Context) (int64, error) {
 
 // GetTotalKeysCalls gets all the calls that were made to GetTotalKeys.
 // Check the length with:
-//     len(mockedStorer.GetTotalKeysCalls())
+//
+//	len(mockedStorer.GetTotalKeysCalls())
 func (mock *StorerMock) GetTotalKeysCalls() []struct {
 	Ctx context.Context
 } {
@@ -287,7 +415,8 @@ func (mock *StorerMock) GetValue(ctx context.Context, key string) (string, error
 
 // GetValueCalls gets all the calls that were made to GetValue.
 // Check the length with:
-//     len(mockedStorer.GetValueCalls())
+//
+//	len(mockedStorer.GetValueCalls())
 func (mock *StorerMock) GetValueCalls() []struct {
 	Ctx context.Context
 	Key string
@@ -326,7 +455,8 @@ func (mock *StorerMock) SetValue(ctx context.Context, key string, value interfac
 
 // SetValueCalls gets all the calls that were made to SetValue.
 // Check the length with:
-//     len(mockedStorer.SetValueCalls())
+//
+//	len(mockedStorer.SetValueCalls())
 func (mock *StorerMock) SetValueCalls() []struct {
 	Ctx        context.Context
 	Key        string

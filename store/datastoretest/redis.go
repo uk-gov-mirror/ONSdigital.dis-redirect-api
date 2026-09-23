@@ -17,34 +17,40 @@ var _ store.Redis = &RedisMock{}
 
 // RedisMock is a mock implementation of store.Redis.
 //
-// 	func TestSomethingThatUsesRedis(t *testing.T) {
+//	func TestSomethingThatUsesRedis(t *testing.T) {
 //
-// 		// make and configure a mocked store.Redis
-// 		mockedRedis := &RedisMock{
-// 			CheckerFunc: func(contextMoqParam context.Context, checkState *healthcheck.CheckState) error {
-// 				panic("mock out the Checker method")
-// 			},
-// 			DeleteValueFunc: func(ctx context.Context, key string) error {
-// 				panic("mock out the DeleteValue method")
-// 			},
-// 			GetKeyValuePairsFunc: func(ctx context.Context, matchPattern string, count int64, cursor uint64) (map[string]string, uint64, error) {
-// 				panic("mock out the GetKeyValuePairs method")
-// 			},
-// 			GetTotalKeysFunc: func(ctx context.Context) (int64, error) {
-// 				panic("mock out the GetTotalKeys method")
-// 			},
-// 			GetValueFunc: func(ctx context.Context, key string) (string, error) {
-// 				panic("mock out the GetValue method")
-// 			},
-// 			SetValueFunc: func(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-// 				panic("mock out the SetValue method")
-// 			},
-// 		}
+//		// make and configure a mocked store.Redis
+//		mockedRedis := &RedisMock{
+//			CheckerFunc: func(contextMoqParam context.Context, checkState *healthcheck.CheckState) error {
+//				panic("mock out the Checker method")
+//			},
+//			DeleteValueFunc: func(ctx context.Context, key string) error {
+//				panic("mock out the DeleteValue method")
+//			},
+//			GetKeyValuePairsFunc: func(ctx context.Context, matchPattern string, count int64, cursor uint64) (map[string]string, uint64, error) {
+//				panic("mock out the GetKeyValuePairs method")
+//			},
+//			GetSetMemberCountFunc: func(ctx context.Context, setKey string) (int64, error) {
+//				panic("mock out the GetSetMemberCount method")
+//			},
+//			GetSetMemberValuesFunc: func(ctx context.Context, setKey string, matchPattern string, valuePrefix string, count int64, cursor uint64) (map[string]string, uint64, error) {
+//				panic("mock out the GetSetMemberValues method")
+//			},
+//			GetTotalKeysFunc: func(ctx context.Context) (int64, error) {
+//				panic("mock out the GetTotalKeys method")
+//			},
+//			GetValueFunc: func(ctx context.Context, key string) (string, error) {
+//				panic("mock out the GetValue method")
+//			},
+//			SetValueFunc: func(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+//				panic("mock out the SetValue method")
+//			},
+//		}
 //
-// 		// use mockedRedis in code that requires store.Redis
-// 		// and then make assertions.
+//		// use mockedRedis in code that requires store.Redis
+//		// and then make assertions.
 //
-// 	}
+//	}
 type RedisMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(contextMoqParam context.Context, checkState *healthcheck.CheckState) error
@@ -54,6 +60,12 @@ type RedisMock struct {
 
 	// GetKeyValuePairsFunc mocks the GetKeyValuePairs method.
 	GetKeyValuePairsFunc func(ctx context.Context, matchPattern string, count int64, cursor uint64) (map[string]string, uint64, error)
+
+	// GetSetMemberCountFunc mocks the GetSetMemberCount method.
+	GetSetMemberCountFunc func(ctx context.Context, setKey string) (int64, error)
+
+	// GetSetMemberValuesFunc mocks the GetSetMemberValues method.
+	GetSetMemberValuesFunc func(ctx context.Context, setKey string, matchPattern string, valuePrefix string, count int64, cursor uint64) (map[string]string, uint64, error)
 
 	// GetTotalKeysFunc mocks the GetTotalKeys method.
 	GetTotalKeysFunc func(ctx context.Context) (int64, error)
@@ -91,6 +103,28 @@ type RedisMock struct {
 			// Cursor is the cursor argument value.
 			Cursor uint64
 		}
+		// GetSetMemberCount holds details about calls to the GetSetMemberCount method.
+		GetSetMemberCount []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SetKey is the setKey argument value.
+			SetKey string
+		}
+		// GetSetMemberValues holds details about calls to the GetSetMemberValues method.
+		GetSetMemberValues []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SetKey is the setKey argument value.
+			SetKey string
+			// MatchPattern is the matchPattern argument value.
+			MatchPattern string
+			// ValuePrefix is the valuePrefix argument value.
+			ValuePrefix string
+			// Count is the count argument value.
+			Count int64
+			// Cursor is the cursor argument value.
+			Cursor uint64
+		}
 		// GetTotalKeys holds details about calls to the GetTotalKeys method.
 		GetTotalKeys []struct {
 			// Ctx is the ctx argument value.
@@ -115,12 +149,14 @@ type RedisMock struct {
 			Expiration time.Duration
 		}
 	}
-	lockChecker          sync.RWMutex
-	lockDeleteValue      sync.RWMutex
-	lockGetKeyValuePairs sync.RWMutex
-	lockGetTotalKeys     sync.RWMutex
-	lockGetValue         sync.RWMutex
-	lockSetValue         sync.RWMutex
+	lockChecker            sync.RWMutex
+	lockDeleteValue        sync.RWMutex
+	lockGetKeyValuePairs   sync.RWMutex
+	lockGetSetMemberCount  sync.RWMutex
+	lockGetSetMemberValues sync.RWMutex
+	lockGetTotalKeys       sync.RWMutex
+	lockGetValue           sync.RWMutex
+	lockSetValue           sync.RWMutex
 }
 
 // Checker calls CheckerFunc.
@@ -143,7 +179,8 @@ func (mock *RedisMock) Checker(contextMoqParam context.Context, checkState *heal
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedRedis.CheckerCalls())
+//
+//	len(mockedRedis.CheckerCalls())
 func (mock *RedisMock) CheckerCalls() []struct {
 	ContextMoqParam context.Context
 	CheckState      *healthcheck.CheckState
@@ -178,7 +215,8 @@ func (mock *RedisMock) DeleteValue(ctx context.Context, key string) error {
 
 // DeleteValueCalls gets all the calls that were made to DeleteValue.
 // Check the length with:
-//     len(mockedRedis.DeleteValueCalls())
+//
+//	len(mockedRedis.DeleteValueCalls())
 func (mock *RedisMock) DeleteValueCalls() []struct {
 	Ctx context.Context
 	Key string
@@ -217,7 +255,8 @@ func (mock *RedisMock) GetKeyValuePairs(ctx context.Context, matchPattern string
 
 // GetKeyValuePairsCalls gets all the calls that were made to GetKeyValuePairs.
 // Check the length with:
-//     len(mockedRedis.GetKeyValuePairsCalls())
+//
+//	len(mockedRedis.GetKeyValuePairsCalls())
 func (mock *RedisMock) GetKeyValuePairsCalls() []struct {
 	Ctx          context.Context
 	MatchPattern string
@@ -233,6 +272,94 @@ func (mock *RedisMock) GetKeyValuePairsCalls() []struct {
 	mock.lockGetKeyValuePairs.RLock()
 	calls = mock.calls.GetKeyValuePairs
 	mock.lockGetKeyValuePairs.RUnlock()
+	return calls
+}
+
+// GetSetMemberCount calls GetSetMemberCountFunc.
+func (mock *RedisMock) GetSetMemberCount(ctx context.Context, setKey string) (int64, error) {
+	if mock.GetSetMemberCountFunc == nil {
+		panic("RedisMock.GetSetMemberCountFunc: method is nil but Redis.GetSetMemberCount was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		SetKey string
+	}{
+		Ctx:    ctx,
+		SetKey: setKey,
+	}
+	mock.lockGetSetMemberCount.Lock()
+	mock.calls.GetSetMemberCount = append(mock.calls.GetSetMemberCount, callInfo)
+	mock.lockGetSetMemberCount.Unlock()
+	return mock.GetSetMemberCountFunc(ctx, setKey)
+}
+
+// GetSetMemberCountCalls gets all the calls that were made to GetSetMemberCount.
+// Check the length with:
+//
+//	len(mockedRedis.GetSetMemberCountCalls())
+func (mock *RedisMock) GetSetMemberCountCalls() []struct {
+	Ctx    context.Context
+	SetKey string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		SetKey string
+	}
+	mock.lockGetSetMemberCount.RLock()
+	calls = mock.calls.GetSetMemberCount
+	mock.lockGetSetMemberCount.RUnlock()
+	return calls
+}
+
+// GetSetMemberValues calls GetSetMemberValuesFunc.
+func (mock *RedisMock) GetSetMemberValues(ctx context.Context, setKey string, matchPattern string, valuePrefix string, count int64, cursor uint64) (map[string]string, uint64, error) {
+	if mock.GetSetMemberValuesFunc == nil {
+		panic("RedisMock.GetSetMemberValuesFunc: method is nil but Redis.GetSetMemberValues was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		SetKey       string
+		MatchPattern string
+		ValuePrefix  string
+		Count        int64
+		Cursor       uint64
+	}{
+		Ctx:          ctx,
+		SetKey:       setKey,
+		MatchPattern: matchPattern,
+		ValuePrefix:  valuePrefix,
+		Count:        count,
+		Cursor:       cursor,
+	}
+	mock.lockGetSetMemberValues.Lock()
+	mock.calls.GetSetMemberValues = append(mock.calls.GetSetMemberValues, callInfo)
+	mock.lockGetSetMemberValues.Unlock()
+	return mock.GetSetMemberValuesFunc(ctx, setKey, matchPattern, valuePrefix, count, cursor)
+}
+
+// GetSetMemberValuesCalls gets all the calls that were made to GetSetMemberValues.
+// Check the length with:
+//
+//	len(mockedRedis.GetSetMemberValuesCalls())
+func (mock *RedisMock) GetSetMemberValuesCalls() []struct {
+	Ctx          context.Context
+	SetKey       string
+	MatchPattern string
+	ValuePrefix  string
+	Count        int64
+	Cursor       uint64
+} {
+	var calls []struct {
+		Ctx          context.Context
+		SetKey       string
+		MatchPattern string
+		ValuePrefix  string
+		Count        int64
+		Cursor       uint64
+	}
+	mock.lockGetSetMemberValues.RLock()
+	calls = mock.calls.GetSetMemberValues
+	mock.lockGetSetMemberValues.RUnlock()
 	return calls
 }
 
@@ -254,7 +381,8 @@ func (mock *RedisMock) GetTotalKeys(ctx context.Context) (int64, error) {
 
 // GetTotalKeysCalls gets all the calls that were made to GetTotalKeys.
 // Check the length with:
-//     len(mockedRedis.GetTotalKeysCalls())
+//
+//	len(mockedRedis.GetTotalKeysCalls())
 func (mock *RedisMock) GetTotalKeysCalls() []struct {
 	Ctx context.Context
 } {
@@ -287,7 +415,8 @@ func (mock *RedisMock) GetValue(ctx context.Context, key string) (string, error)
 
 // GetValueCalls gets all the calls that were made to GetValue.
 // Check the length with:
-//     len(mockedRedis.GetValueCalls())
+//
+//	len(mockedRedis.GetValueCalls())
 func (mock *RedisMock) GetValueCalls() []struct {
 	Ctx context.Context
 	Key string
@@ -326,7 +455,8 @@ func (mock *RedisMock) SetValue(ctx context.Context, key string, value interface
 
 // SetValueCalls gets all the calls that were made to SetValue.
 // Check the length with:
-//     len(mockedRedis.SetValueCalls())
+//
+//	len(mockedRedis.SetValueCalls())
 func (mock *RedisMock) SetValueCalls() []struct {
 	Ctx        context.Context
 	Key        string

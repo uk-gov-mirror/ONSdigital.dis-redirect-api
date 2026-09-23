@@ -23,6 +23,7 @@ func (c *RedirectComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	c.apiFeature.RegisterSteps(ctx)
 	ctx.Step(`^private endpoints are enabled$`, c.privateEndpointsAreEnabled)
 	ctx.Step(`^the redirect api is running$`, c.theRedirectAPIIsRunning)
+	ctx.Step(`^reverse lookup is enabled$`, c.reverseLookupIsEnabled)
 	ctx.Step(`^I would expect there to be three or more redirects returned in a list$`, c.iWouldExpectThereToBeThreeOrMoreRedirectsReturnedInAList)
 	ctx.Step(`^in each redirect I would expect the response to contain values that have these structures$`, c.inEachRedirectIWouldExpectTheResponseToContainValuesThatHaveTheseStructures)
 	ctx.Step(`^the list of redirects should also contain the following values:$`, c.theListOfRedirectsShouldAlsoContainTheFollowingValues)
@@ -173,6 +174,7 @@ func (c *RedirectComponent) iWouldExpectThereToBeRedirectsReturnedInAList(expect
 	return nil
 }
 
+// This must be run before the api is started
 func (c *RedirectComponent) privateEndpointsAreEnabled() error {
 	if c.Config == nil {
 		cfg, err := config.Get()
@@ -183,5 +185,19 @@ func (c *RedirectComponent) privateEndpointsAreEnabled() error {
 		c.Config = &cfgCopy
 	}
 	c.Config.EnablePrivateEndpoints = true
+	return nil
+}
+
+// This must be run before the api is started
+func (c *RedirectComponent) reverseLookupIsEnabled() error {
+	if c.Config == nil {
+		cfg, err := config.Get()
+		if err != nil {
+			return err
+		}
+		cfgCopy := *cfg
+		c.Config = &cfgCopy
+	}
+	c.Config.EnableReverseLookup = true
 	return nil
 }
